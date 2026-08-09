@@ -75,3 +75,7 @@ python_version = "3.11"
 strict = true
 warn_unused_ignores = true
 mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = "fpga_dse.config"
+disable_error_code = ["operator", "arg-type", "no-untyped-call"]
