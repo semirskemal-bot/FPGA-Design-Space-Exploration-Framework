@@ -1,0 +1,64 @@
+version: 1
+
+project:
+  name: yosys-dot-product
+  workspace: .dse
+
+parameters:
+  DATA_WIDTH:
+    values: [8, 12, 16]
+  LANES:
+    values: [1, 2, 4, 8]
+  PIPELINE:
+    values: [0, 1, 2, 3]
+
+parameter_constraints:
+  - DATA_WIDTH * LANES <= 128
+  - PIPELINE <= LANES + 1
+
+search:
+  strategy: grid
+  seed: 11
+  max_designs: 500
+
+execution:
+  adapter: shell
+  jobs: 2
+  timeout_seconds: 300
+  result_file: result.json
+  fingerprint_files:
+    - rtl/**/*.sv
+    - scripts/**/*.py
+  command:
+    - "{{ python_executable }}"
+    - "{{ project_root }}/scripts/run_yosys.py"
+    - "--source"
+    - "{{ project_root }}/rtl/dot_product.sv"
+    - "--top"
+    - dot_product
+    - "--data-width"
+    - "{{ DATA_WIDTH }}"
+    - "--lanes"
+    - "{{ LANES }}"
+    - "--pipeline"
+    - "{{ PIPELINE }}"
+    - "--output"
+    - "{{ run_dir }}/result.json"
+
+metric_constraints:
+  - cells <= 50000
+  - wire_bits <= 200000
+
+objectives:
+  - metric: operations_per_cycle
+    goal: maximize
+    weight: 0.45
+  - metric: cells
+    goal: minimize
+    weight: 0.35
+  - metric: latency_cycles
+    goal: minimize
+    weight: 0.15
+  - metric: register_cells
+    goal: minimize
+    weight: 0.05
