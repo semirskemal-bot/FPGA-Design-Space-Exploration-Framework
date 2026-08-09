@@ -68,14 +68,10 @@ ignore = ["E501"]
 known-first-party = ["fpga_dse"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/fpga_dse/config.py" = ["UP034"]
+"src/fpga_dse/config.py" = ["E731"]
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
 warn_unused_ignores = true
 mypy_path = "src"
-
-[[tool.mypy.overrides]]
-module = "fpga_dse.config"
-disable_error_code = ["operator", "arg-type", "no-untyped-call"]
