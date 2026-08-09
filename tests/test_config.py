@@ -6,7 +6,6 @@ import pytest
 
 from fpga_dse.config import ConfigError, load_config
 
-
 BASE = """version: 1
 project:
   name: unit-study
@@ -115,3 +114,27 @@ def test_rejects_unknown_and_duplicate_fields(tmp_path: Path) -> None:
     duplicate = BASE.replace("  name: unit-study", "  name: unit-study\n  name: duplicate")
     with pytest.raises(ConfigError, match="duplicate key"):
         load_config(write_config(tmp_path, duplicate))
+
+
+def test_rejects_unknown_objective_field(tmp_path: Path) -> None:
+    text = BASE.replace(
+        "{metric: speed, goal: maximize, weight: 2}",
+        "{metric: speed, goal: maximize, weight: 2, wieght: 9}",
+    )
+    with pytest.raises(ConfigError, match="unknown field"):
+        load_config(write_config(tmp_path, text))
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("weight: 2", "weight: .inf"),
+        ("jobs: 2", "jobs: 2\n  timeout_seconds: .inf"),
+        ("range: {start: 2, stop: 6, step: 2}", "range: {start: 2, stop: .inf, step: 2}"),
+    ],
+)
+def test_rejects_nonfinite_configuration_numbers(
+    tmp_path: Path, old: str, new: str
+) -> None:
+    with pytest.raises(ConfigError, match="finite"):
+        load_config(write_config(tmp_path, BASE.replace(old, new)))

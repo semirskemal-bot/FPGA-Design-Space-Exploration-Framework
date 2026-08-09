@@ -11,7 +11,6 @@ from fpga_dse.space import (
     total_combinations,
 )
 
-
 PARAMETERS = (
     ParameterSpec("WIDTH", (8, 16, 32)),
     ParameterSpec("LANES", (1, 2, 4)),
