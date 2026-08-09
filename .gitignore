@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+.venv/
+
+# DSE outputs
+.dse/
+**/.dse/
+
+# FPGA tool outputs
+*.jou
+*.log
+*.rpt
+*.bit
+*.bin
+*.sof
+*.qpf
+*.qsf
+*.runs/
+*.cache/
+*.gen/
+*.sim/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

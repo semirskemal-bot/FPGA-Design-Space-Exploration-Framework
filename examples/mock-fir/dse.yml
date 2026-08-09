@@ -1,0 +1,56 @@
+version: 1
+
+project:
+  name: mock-fir-filter
+  workspace: .dse
+
+parameters:
+  DATA_WIDTH:
+    values: [8, 12, 16, 24]
+  TAPS:
+    values: [4, 8, 16, 32]
+  PIPELINE_STAGES:
+    values: [0, 1, 2, 3]
+  COEFFICIENT_MODE:
+    values: [fixed, programmable]
+
+parameter_constraints:
+  - DATA_WIDTH * TAPS <= 512
+  - PIPELINE_STAGES <= TAPS
+
+search:
+  strategy: grid
+  seed: 7
+  max_designs: 1000
+
+execution:
+  adapter: mock
+  jobs: 4
+  mock_delay_ms: 5
+  mock_metrics:
+    lut: round(90 + DATA_WIDTH * TAPS * (0.72 if COEFFICIENT_MODE == 'fixed' else 0.94) + PIPELINE_STAGES * 24)
+    ff: round(40 + DATA_WIDTH * PIPELINE_STAGES * 1.8 + TAPS * 3)
+    dsp: ceil(DATA_WIDTH * TAPS / (112 if COEFFICIENT_MODE == 'fixed' else 88))
+    fmax_mhz: round(155 + PIPELINE_STAGES * 68 - DATA_WIDTH * 1.7 - TAPS * 0.65, 2)
+    latency_cycles: 2 + PIPELINE_STAGES
+    throughput_samples_per_cycle: 1
+    estimated_power_w: round(0.35 + DATA_WIDTH * TAPS * 0.0009 + PIPELINE_STAGES * 0.02, 4)
+
+metric_constraints:
+  - fmax_mhz >= 150
+  - lut <= 1000
+  - dsp <= 64
+
+objectives:
+  - metric: fmax_mhz
+    goal: maximize
+    weight: 0.45
+  - metric: lut
+    goal: minimize
+    weight: 0.25
+  - metric: estimated_power_w
+    goal: minimize
+    weight: 0.20
+  - metric: latency_cycles
+    goal: minimize
+    weight: 0.10

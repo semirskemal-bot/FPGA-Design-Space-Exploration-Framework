@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fpga-dse"
+version = "0.1.0"
+description = "Reproducible FPGA design-space exploration from parameter sweep to Pareto report"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Semir Kemal" }]
+keywords = ["fpga", "design-space-exploration", "yosys", "synthesis", "pareto"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+dependencies = [
+  "Jinja2>=3.1,<4",
+  "PyYAML>=6.0,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "jsonschema>=4.23,<5",
+  "mypy>=1.11,<3",
+  "pytest>=8.2,<10",
+  "pytest-cov>=5,<8",
+  "ruff>=0.6,<1",
+  "types-PyYAML>=6.0.12",
+]
+
+[project.scripts]
+fpga-dse = "fpga_dse.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/semirskemal-bot/FPGA-Design-Space-Exploration-Framework"
+Repository = "https://github.com/semirskemal-bot/FPGA-Design-Space-Exploration-Framework"
+Issues = "https://github.com/semirskemal-bot/FPGA-Design-Space-Exploration-Framework/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers --disable-warnings --maxfail=1"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fpga_dse"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/fpga_dse/config.py" = ["E731", "UP034"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+mypy_path = "src"
