@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -179,8 +179,17 @@ def _parse_range_values(name: str, raw: Any) -> list[Scalar]:
     step = raw.get("step", 1)
     inclusive = raw.get("inclusive", True)
 
-    if not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in (start, stop, step)):
+    if (
+        isinstance(start, bool)
+        or not isinstance(start, (int, float))
+        or isinstance(stop, bool)
+        or not isinstance(stop, (int, float))
+        or isinstance(step, bool)
+        or not isinstance(step, (int, float))
+    ):
         raise ConfigError(f"parameter {name!r}.range start, stop, and step must be numeric")
+    if not all(math.isfinite(float(value)) for value in (start, stop, step)):
+        raise ConfigError(f"parameter {name!r}.range values must be finite")
     if step == 0:
         raise ConfigError(f"parameter {name!r}.range step cannot be zero")
     if not isinstance(inclusive, bool):
@@ -189,17 +198,20 @@ def _parse_range_values(name: str, raw: Any) -> list[Scalar]:
         raise ConfigError(f"parameter {name!r}.range step points away from stop")
 
     values: list[Scalar] = []
-    current = float(start) if any(isinstance(value, float) for value in (start, stop, step)) else int(start)
+    use_float = any(isinstance(value, float) for value in (start, stop, step))
+    current: int | float = float(start) if use_float else int(start)
+    stop_value = float(stop)
     tolerance = abs(float(step)) * 1e-10
-    compare = (
-        (lambda value: value <= float(stop) + tolerance)
-        if step > 0 and inclusive
-        else (lambda value: value < float(stop) - tolerance)
-        if step > 0
-        else (lambda value: value >= float(stop) - tolerance)
-        if inclusive
-        else (lambda value: value > float(stop) + tolerance)
-    )
+    compare: Callable[[float], bool]
+    if step > 0:
+        if inclusive:
+            compare = lambda value: value <= stop_value + tolerance
+        else:
+            compare = lambda value: value < stop_value - tolerance
+    elif inclusive:
+        compare = lambda value: value >= stop_value - tolerance
+    else:
+        compare = lambda value: value > stop_value + tolerance
 
     count = 0
     while compare(float(current)):
@@ -224,13 +236,19 @@ def _parse_objectives(raw: Any) -> tuple[Objective, ...]:
     for index, item in enumerate(raw):
         if not isinstance(item, Mapping):
             raise ConfigError(f"objectives[{index}] must be a mapping")
+        _reject_unknown(item, {"metric", "goal", "weight"}, f"objectives[{index}]")
         metric = _require_nonempty_string(item, "metric")
         goal = item.get("goal")
         if goal not in {"minimize", "maximize"}:
             raise ConfigError(f"objective {metric!r}.goal must be minimize or maximize")
         weight = item.get("weight", 1.0)
-        if not isinstance(weight, (int, float)) or isinstance(weight, bool) or weight <= 0:
-            raise ConfigError(f"objective {metric!r}.weight must be positive")
+        if (
+            not isinstance(weight, (int, float))
+            or isinstance(weight, bool)
+            or not math.isfinite(float(weight))
+            or weight <= 0
+        ):
+            raise ConfigError(f"objective {metric!r}.weight must be positive and finite")
         if metric in seen:
             raise ConfigError(f"duplicate objective metric {metric!r}")
         seen.add(metric)
@@ -284,8 +302,13 @@ def _parse_execution(raw: Mapping[str, Any]) -> ExecutionSpec:
     timeout = raw.get("timeout_seconds", 3_600.0)
     if not isinstance(jobs, int) or isinstance(jobs, bool) or jobs <= 0:
         raise ConfigError("execution.jobs must be a positive integer")
-    if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or timeout <= 0:
-        raise ConfigError("execution.timeout_seconds must be positive")
+    if (
+        not isinstance(timeout, (int, float))
+        or isinstance(timeout, bool)
+        or not math.isfinite(float(timeout))
+        or timeout <= 0
+    ):
+        raise ConfigError("execution.timeout_seconds must be positive and finite")
 
     command_raw = raw.get("command")
     command: str | tuple[str, ...] | None
@@ -319,6 +342,11 @@ def _parse_execution(raw: Mapping[str, Any]) -> ExecutionSpec:
         for key, value in environment_raw.items()
     ):
         raise ConfigError("execution.environment must map strings to scalar values")
+    if any(
+        isinstance(value, float) and not math.isfinite(value)
+        for value in environment_raw.values()
+    ):
+        raise ConfigError("execution.environment values must be finite")
     environment = {str(key): str(value) for key, value in environment_raw.items()}
 
     mock_metrics_raw = raw.get("mock_metrics", {})
